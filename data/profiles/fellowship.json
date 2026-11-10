@@ -1,0 +1,9 @@
+{
+    "name": "Fellowship",
+    "group": "Games",
+    "description": "Placeholder amber, edit to taste.",
+    "effect": "Solid Color",
+    "color": "#d98c2b",
+    "brightness": 80,
+    "speed": 128
+}

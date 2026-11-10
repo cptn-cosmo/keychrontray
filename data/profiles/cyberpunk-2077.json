@@ -1,0 +1,9 @@
+{
+    "name": "Cyberpunk 2077",
+    "group": "Games",
+    "description": "Night City yellow.",
+    "effect": "Solid Color",
+    "color": "#fcee0a",
+    "brightness": 85,
+    "speed": 128
+}

@@ -1,0 +1,9 @@
+{
+    "name": "TaleSpire",
+    "group": "Games",
+    "description": "Tabletop teal.",
+    "effect": "Solid Color",
+    "color": "#2ba88a",
+    "brightness": 75,
+    "speed": 128
+}

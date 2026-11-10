@@ -1,0 +1,15 @@
+[Global]
+IconName=input-keyboard
+Name=Keychron Tray
+Comment=Keychron keyboard battery and lighting
+
+[Event/lowBattery]
+Name=Keyboard battery low
+Comment=The keyboard battery dropped below a configured threshold
+Action=Popup
+Urgency=High
+
+[Event/lightingError]
+Name=Lighting error
+Comment=A lighting profile could not be applied
+Action=Popup

@@ -1,0 +1,9 @@
+{
+    "name": "Endwalker",
+    "group": "Final Fantasy XIV",
+    "description": "Endwalker gold.",
+    "effect": "Solid Color",
+    "color": "#e0b84a",
+    "brightness": 80,
+    "speed": 128
+}

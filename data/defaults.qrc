@@ -1,0 +1,28 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="/defaults">
+    <file>profiles/beat-saber.json</file>
+    <file>profiles/bg3.json</file>
+    <file>profiles/control.json</file>
+    <file>profiles/cyberpunk-2077.json</file>
+    <file>profiles/desk.json</file>
+    <file>profiles/destiny-2.json</file>
+    <file>profiles/elden-ring.json</file>
+    <file>profiles/fellowship.json</file>
+    <file>profiles/ffxiv-arr.json</file>
+    <file>profiles/ffxiv-dawntrail.json</file>
+    <file>profiles/ffxiv-endwalker.json</file>
+    <file>profiles/ffxiv-heavensward.json</file>
+    <file>profiles/ffxiv-shadowbringers.json</file>
+    <file>profiles/ffxiv-stormblood.json</file>
+    <file>profiles/hades.json</file>
+    <file>profiles/half-life-alyx.json</file>
+    <file>profiles/halo-mcc.json</file>
+    <file>profiles/helldivers-2.json</file>
+    <file>profiles/remnant-2.json</file>
+    <file>profiles/steam-generic.json</file>
+    <file>profiles/talespire.json</file>
+    <file>profiles/vrchat.json</file>
+    <file>profiles/wow-forever.json</file>
+    <file>games.json</file>
+</qresource>
+</RCC>

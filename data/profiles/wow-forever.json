@@ -1,0 +1,9 @@
+{
+    "name": "WoW Forever",
+    "group": "World of Warcraft",
+    "description": "Warm gold/bronze.",
+    "effect": "Breathing",
+    "color": "#c8902e",
+    "brightness": 85,
+    "speed": 40
+}

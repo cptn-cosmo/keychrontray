@@ -1,0 +1,8 @@
+{
+    "name": "Desk",
+    "description": "Neutral white for work.",
+    "effect": "Solid Color",
+    "color": "#ffffff",
+    "brightness": 60,
+    "speed": 128
+}

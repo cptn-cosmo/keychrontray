@@ -1,0 +1,9 @@
+{
+    "name": "Control",
+    "group": "Games",
+    "description": "Oldest House red (black = unlit keys are not possible with one color).",
+    "effect": "Solid Color",
+    "color": "#d0021b",
+    "brightness": 90,
+    "speed": 128
+}

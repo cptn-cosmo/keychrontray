@@ -1,0 +1,9 @@
+{
+    "name": "Half-Life: Alyx",
+    "group": "Games",
+    "description": "Lambda orange.",
+    "effect": "Solid Color",
+    "color": "#f27f1b",
+    "brightness": 85,
+    "speed": 128
+}

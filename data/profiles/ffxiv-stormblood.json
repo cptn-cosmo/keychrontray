@@ -1,0 +1,9 @@
+{
+    "name": "Stormblood",
+    "group": "Final Fantasy XIV",
+    "description": "Crimson of the Stormblood key art.",
+    "effect": "Solid Color",
+    "color": "#c8102e",
+    "brightness": 80,
+    "speed": 128
+}

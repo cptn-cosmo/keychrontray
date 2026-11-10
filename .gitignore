@@ -1,0 +1,9 @@
+build/
+compile_commands.json
+.cache/
+# makepkg artefacts
+packaging/arch/src/
+packaging/arch/pkg/
+packaging/arch/keychrontray/
+packaging/arch/*.pkg.tar.*
+packaging/arch/*.log

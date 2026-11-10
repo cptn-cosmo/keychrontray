@@ -1,0 +1,9 @@
+{
+    "name": "Heavensward",
+    "group": "Final Fantasy XIV",
+    "description": "Ishgard ice blue.",
+    "effect": "Solid Color",
+    "color": "#a9d4f5",
+    "brightness": 80,
+    "speed": 128
+}

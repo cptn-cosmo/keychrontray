@@ -1,0 +1,9 @@
+{
+    "name": "Beat Saber",
+    "group": "Games",
+    "description": "Blue saber.",
+    "effect": "Breathing",
+    "color": "#2a7fff",
+    "brightness": 90,
+    "speed": 90
+}

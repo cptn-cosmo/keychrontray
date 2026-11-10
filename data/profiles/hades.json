@@ -1,0 +1,9 @@
+{
+    "name": "Hades",
+    "group": "Games",
+    "description": "Underworld fire.",
+    "effect": "Solid Color",
+    "color": "#e2462b",
+    "brightness": 85,
+    "speed": 128
+}

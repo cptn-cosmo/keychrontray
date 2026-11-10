@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Keychron Tray
+Comment=Keychron keyboard battery and lighting profiles
+Exec=keychrontray
+Icon=input-keyboard
+Categories=Qt;KDE;Settings;HardwareSettings;
+Keywords=keyboard;keychron;rgb;battery;
+X-KDE-StartupNotify=false

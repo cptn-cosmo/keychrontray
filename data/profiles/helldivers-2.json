@@ -1,0 +1,9 @@
+{
+    "name": "HELLDIVERS 2",
+    "group": "Games",
+    "description": "Super Earth yellow.",
+    "effect": "Solid Color",
+    "color": "#ffe710",
+    "brightness": 90,
+    "speed": 128
+}

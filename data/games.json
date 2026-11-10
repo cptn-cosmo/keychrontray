@@ -1,0 +1,206 @@
+{
+    "fallbackProfile": "steam-generic",
+    "ignoredSteamAppIds": [
+        228980,
+        250820,
+        1070560,
+        1391110,
+        1493710,
+        1628350,
+        2180100
+    ],
+    "games": [
+        {
+            "id": "wow-forever",
+            "name": "World of Warcraft",
+            "steamAppIds": [],
+            "processNames": [
+                "Wow.exe",
+                "WowClassic.exe",
+                "Wow-64.exe"
+            ],
+            "profile": "wow-forever",
+            "priority": 0
+        },
+        {
+            "id": "ffxiv",
+            "name": "FINAL FANTASY XIV Online",
+            "steamAppIds": [
+                39210
+            ],
+            "processNames": [
+                "ffxiv_dx11.exe"
+            ],
+            "profile": "ffxiv-dawntrail",
+            "priority": 0
+        },
+        {
+            "id": "bg3",
+            "name": "Baldur's Gate 3",
+            "steamAppIds": [
+                1086940
+            ],
+            "processNames": [
+                "bg3.exe",
+                "bg3_dx11.exe"
+            ],
+            "profile": "bg3",
+            "priority": 0
+        },
+        {
+            "id": "control",
+            "name": "Control",
+            "steamAppIds": [
+                870780
+            ],
+            "processNames": [
+                "Control_DX12.exe",
+                "Control_DX11.exe"
+            ],
+            "profile": "control",
+            "priority": 0
+        },
+        {
+            "id": "cyberpunk-2077",
+            "name": "Cyberpunk 2077",
+            "steamAppIds": [
+                1091500
+            ],
+            "processNames": [
+                "Cyberpunk2077.exe"
+            ],
+            "profile": "cyberpunk-2077",
+            "priority": 0
+        },
+        {
+            "id": "elden-ring",
+            "name": "Elden Ring",
+            "steamAppIds": [
+                1245620
+            ],
+            "processNames": [
+                "eldenring.exe"
+            ],
+            "profile": "elden-ring",
+            "priority": 0
+        },
+        {
+            "id": "hades",
+            "name": "Hades",
+            "steamAppIds": [
+                1145360
+            ],
+            "processNames": [
+                "Hades.exe"
+            ],
+            "profile": "hades",
+            "priority": 0
+        },
+        {
+            "id": "remnant-2",
+            "name": "Remnant II",
+            "steamAppIds": [
+                1282100
+            ],
+            "processNames": [
+                "Remnant2-Win64-Shipping.exe"
+            ],
+            "profile": "remnant-2",
+            "priority": 0
+        },
+        {
+            "id": "halo-mcc",
+            "name": "Halo: The Master Chief Collection",
+            "steamAppIds": [
+                976730
+            ],
+            "processNames": [
+                "MCC-Win64-Shipping.exe"
+            ],
+            "profile": "halo-mcc",
+            "priority": 0
+        },
+        {
+            "id": "half-life-alyx",
+            "name": "Half-Life: Alyx",
+            "steamAppIds": [
+                546560
+            ],
+            "processNames": [
+                "hlvr.exe"
+            ],
+            "profile": "half-life-alyx",
+            "priority": 0
+        },
+        {
+            "id": "beat-saber",
+            "name": "Beat Saber",
+            "steamAppIds": [
+                620980
+            ],
+            "processNames": [
+                "Beat Saber.exe"
+            ],
+            "profile": "beat-saber",
+            "priority": 0
+        },
+        {
+            "id": "talespire",
+            "name": "TaleSpire",
+            "steamAppIds": [
+                720620
+            ],
+            "processNames": [
+                "TaleSpire.exe"
+            ],
+            "profile": "talespire",
+            "priority": 0
+        },
+        {
+            "id": "vrchat",
+            "name": "VRChat",
+            "steamAppIds": [
+                438100
+            ],
+            "processNames": [
+                "VRChat.exe"
+            ],
+            "profile": "vrchat",
+            "priority": 0
+        },
+        {
+            "id": "fellowship",
+            "name": "Fellowship",
+            "steamAppIds": [
+                2352620
+            ],
+            "processNames": [],
+            "profile": "fellowship",
+            "priority": 0
+        },
+        {
+            "id": "destiny-2",
+            "name": "Destiny 2",
+            "steamAppIds": [
+                1085660
+            ],
+            "processNames": [
+                "destiny2.exe"
+            ],
+            "profile": "destiny-2",
+            "priority": 0
+        },
+        {
+            "id": "helldivers-2",
+            "name": "HELLDIVERS 2",
+            "steamAppIds": [
+                553850
+            ],
+            "processNames": [
+                "helldivers2.exe"
+            ],
+            "profile": "helldivers-2",
+            "priority": 0
+        }
+    ]
+}

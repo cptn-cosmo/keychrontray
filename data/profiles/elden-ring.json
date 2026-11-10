@@ -1,0 +1,9 @@
+{
+    "name": "Elden Ring",
+    "group": "Games",
+    "description": "Erdtree gold.",
+    "effect": "Breathing",
+    "color": "#c9a227",
+    "brightness": 80,
+    "speed": 40
+}

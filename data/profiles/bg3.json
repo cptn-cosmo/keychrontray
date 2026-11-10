@@ -1,0 +1,9 @@
+{
+    "name": "Baldur's Gate 3",
+    "group": "Games",
+    "description": "Mind flayer purple.",
+    "effect": "Breathing",
+    "color": "#7b2cbf",
+    "brightness": 80,
+    "speed": 50
+}

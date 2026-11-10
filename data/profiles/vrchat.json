@@ -1,0 +1,9 @@
+{
+    "name": "VRChat",
+    "group": "Games",
+    "description": "VRChat cyan.",
+    "effect": "Solid Color",
+    "color": "#00b7d6",
+    "brightness": 70,
+    "speed": 128
+}

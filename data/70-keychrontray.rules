@@ -1,0 +1,4 @@
+# keychrontray: user access to Keychron (VID 3434) raw-HID interfaces, no root needed.
+# TAG+="uaccess" grants access to the user logged in at the local seat (systemd-logind).
+# Install:  sudo cp 70-keychrontray.rules /etc/udev/rules.d/ && sudo udevadm control --reload && sudo udevadm trigger
+KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="3434", TAG+="uaccess"

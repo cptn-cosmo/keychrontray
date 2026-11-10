@@ -1,0 +1,9 @@
+{
+    "name": "Destiny 2",
+    "group": "Games",
+    "description": "Traveler light.",
+    "effect": "Breathing",
+    "color": "#9ad0ff",
+    "brightness": 80,
+    "speed": 40
+}
