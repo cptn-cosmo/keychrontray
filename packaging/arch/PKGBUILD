@@ -7,8 +7,8 @@ pkgdesc="KDE Plasma tray app for Keychron keyboards: battery status and RGB ligh
 arch=('x86_64' 'aarch64')
 url="https://github.com/cptn-cosmo/keychrontray"
 license=('GPL-3.0-or-later')
-depends=('qt6-base' 'kstatusnotifieritem' 'knotifications' 'kconfig' 'kcoreaddons' 'hidapi' 'systemd-libs'
-         'gcc-libs' 'glibc')
+depends=('qt6-base' 'kstatusnotifieritem' 'knotifications' 'kconfig' 'hidapi' 'systemd-libs'
+         'libstdc++' 'glibc')
 makedepends=('git' 'cmake' 'ninja' 'extra-cmake-modules')
 optdepends=('upower: keyboard battery level over Bluetooth'
             'bluez: Bluetooth connection detection')
