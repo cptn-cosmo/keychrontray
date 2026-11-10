@@ -1,9 +1,15 @@
 {
     "name": "Hades",
     "group": "Games",
-    "description": "Underworld fire.",
-    "effect": "Solid Color",
-    "color": "#e2462b",
-    "brightness": 85,
-    "speed": 128
+    "description": "Underworld fire into Styx purple.",
+    "gradient": {
+        "colors": [
+            "#ff6a1a",
+            "#e2262b",
+            "#7a1fa2"
+        ],
+        "motion": "scroll",
+        "cycleSeconds": 14
+    },
+    "brightness": 85
 }

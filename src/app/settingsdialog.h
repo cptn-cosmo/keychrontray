@@ -7,6 +7,9 @@
 class TrayController;
 class QCheckBox;
 class QComboBox;
+class QDoubleSpinBox;
+class QFormLayout;
+class QHBoxLayout;
 class QLabel;
 class QLineEdit;
 class QListWidget;
@@ -37,6 +40,9 @@ private:
     void loadProfileIntoEditor(const QString &id);
     void editorChanged();
     void updateColorButton();
+    void rebuildStopButtons();
+    void updateGradientPreview();
+    void updateStyleRows();
     bool saveCurrentProfile();
     bool confirmDiscard();
 
@@ -68,6 +74,14 @@ private:
     QLabel *m_brightnessLabel = nullptr;
     QLabel *m_speedLabel = nullptr;
     QCheckBox *m_livePreview = nullptr;
+    QFormLayout *m_form = nullptr;
+    QComboBox *m_style = nullptr;
+    QWidget *m_stopsWidget = nullptr;
+    QHBoxLayout *m_stopsLayout = nullptr;
+    QComboBox *m_motion = nullptr;
+    QDoubleSpinBox *m_cycle = nullptr;
+    QLabel *m_gradientPreview = nullptr;
+    QLabel *m_styleNote = nullptr;
     QPushButton *m_saveProfile = nullptr;
     Profile m_edit;
     bool m_dirty = false;

@@ -19,7 +19,22 @@ enum Command : uint8_t {
     // Keychron extensions
     KcGetProtocolVersion = 0xA0,
     KcGetFirmwareVersion = 0xA1,
+    KcGetSupportFeature = 0xA2,
+    KcRgb = 0xA8,
 };
+
+// Keychron RGB sub-commands (A8 xx), firmware branch 2025q3 common/rgb/keychron_rgb.c; reply: A8 xx status payload
+enum KcRgbCommand : uint8_t {
+    KcRgbGetProtocolVersion = 0x01,
+    KcRgbSave = 0x02, // EEPROM - never sent by this app
+    KcRgbGetLedCount = 0x05,
+    KcRgbGetLedIndex = 0x06, // row, 3-byte column mask -> LED index per column (0xff = none)
+    KcRgbGetPerKeyType = 0x07,
+    KcRgbSetPerKeyType = 0x08,
+    KcRgbGetPerKeyColor = 0x09, // start, count(<=9) -> h s v * count
+    KcRgbSetPerKeyColor = 0x0A, // start, count(<=9), h s v * count
+};
+constexpr uint8_t FeatureKeychronRgb = 0x80; // byte 2 of the A2 reply
 
 constexpr uint8_t RgbMatrixChannel = 0x03;
 enum RgbValue : uint8_t {

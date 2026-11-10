@@ -1,9 +1,14 @@
 {
     "name": "Stormblood",
     "group": "Final Fantasy XIV",
-    "description": "Crimson of the Stormblood key art.",
-    "effect": "Solid Color",
-    "color": "#c8102e",
-    "brightness": 80,
-    "speed": 128
+    "description": "Stormblood crimson into the dawn of liberation.",
+    "gradient": {
+        "colors": [
+            "#c8102e",
+            "#ff7a1a"
+        ],
+        "motion": "scroll",
+        "cycleSeconds": 18
+    },
+    "brightness": 80
 }

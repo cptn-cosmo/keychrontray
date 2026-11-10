@@ -1,9 +1,15 @@
 {
     "name": "Remnant II",
     "group": "Games",
-    "description": "Rust orange.",
-    "effect": "Solid Color",
-    "color": "#b5541c",
-    "brightness": 75,
-    "speed": 128
+    "description": "Root rust into biome teal.",
+    "gradient": {
+        "colors": [
+            "#b5541c",
+            "#e0a050",
+            "#3fae9b"
+        ],
+        "motion": "static",
+        "cycleSeconds": 12
+    },
+    "brightness": 75
 }

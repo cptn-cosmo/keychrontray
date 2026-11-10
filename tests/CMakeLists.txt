@@ -1,4 +1,4 @@
-foreach(t via profile matcher batteryalerts lighting steam)
+foreach(t via profile matcher batteryalerts lighting steam gradient)
     add_executable(test_${t} test_${t}.cpp)
     target_link_libraries(test_${t} PRIVATE keychrontray_core Qt6::Test)
     add_test(NAME ${t} COMMAND test_${t})

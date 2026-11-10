@@ -1,9 +1,12 @@
 #include "profilemanager.h"
 #include "logging.h"
 
+#include <QCryptographicHash>
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QSaveFile>
 #include <QStandardPaths>
 
@@ -30,32 +33,134 @@ QString ProfileManager::profilesDir() const
     return m_configDir + QStringLiteral("/profiles");
 }
 
+#include "legacydefaults.inc"
+
+namespace {
+QByteArray sha1(const QByteArray &data)
+{
+    return QCryptographicHash::hash(data, QCryptographicHash::Sha1).toHex();
+}
+QByteArray readAll(const QString &path)
+{
+    QFile f(path);
+    return f.open(QIODevice::ReadOnly) ? f.readAll() : QByteArray();
+}
+bool writeFile(const QString &path, const QByteArray &data)
+{
+    QSaveFile f(path);
+    if (!f.open(QIODevice::WriteOnly) || f.write(data) < 0 || !f.commit()) {
+        return false;
+    }
+    QFile::setPermissions(path, QFile::ReadOwner | QFile::WriteOwner | QFile::ReadGroup | QFile::ReadOther);
+    return true;
+}
+}
+
+QString ProfileManager::shippedStatePath() const
+{
+    return profilesDir() + QStringLiteral("/.shipped.json");
+}
+
 bool ProfileManager::ensureDefaults()
 {
     QDir dir(profilesDir());
-    if (dir.exists()) {
-        return false;
-    }
-    if (!dir.mkpath(QStringLiteral("."))) {
+    const bool firstRun = !dir.exists();
+    if (firstRun && !dir.mkpath(QStringLiteral("."))) {
         qCWarning(lcProfiles) << "cannot create" << dir.path();
         return false;
     }
+    // id -> SHA-1 of the default we installed. Lets us upgrade untouched defaults while never
+    // overwriting a profile the user edited, and not resurrecting one the user deleted.
+    QJsonObject shipped = QJsonDocument::fromJson(readAll(shippedStatePath())).object();
+    const QSet<QByteArray> legacy(std::begin(kLegacyDefaultHashes), std::end(kLegacyDefaultHashes));
+
+    int installed = 0, updated = 0, kept = 0;
     QDirIterator it(QStringLiteral(":/defaults/profiles"), {QStringLiteral("*.json")});
-    int n = 0;
     while (it.hasNext()) {
         const QString src = it.next();
+        const QString id = QFileInfo(src).completeBaseName();
         const QString dst = dir.filePath(QFileInfo(src).fileName());
-        if (QFile::copy(src, dst)) {
-            QFile::setPermissions(dst, QFile::ReadOwner | QFile::WriteOwner | QFile::ReadGroup | QFile::ReadOther);
-            ++n;
+        const QByteArray bundled = readAll(src);
+        const QByteArray bundledHash = sha1(bundled);
+        const QByteArray recorded = shipped.value(id).toString().toLatin1();
+
+        if (!QFile::exists(dst)) {
+            if (!firstRun && (!recorded.isEmpty() || legacyInstall())) {
+                // The user deleted it. Remember it was offered so it is not resurrected later.
+                if (recorded.isEmpty()) {
+                    shipped.insert(id, QString::fromLatin1(bundledHash));
+                }
+                continue;
+            }
+            if (writeFile(dst, bundled)) {
+                shipped.insert(id, QString::fromLatin1(bundledHash));
+                ++installed;
+            }
+            continue;
+        }
+        const QByteArray current = sha1(readAll(dst));
+        if (current == bundledHash) {
+            shipped.insert(id, QString::fromLatin1(bundledHash));
+            continue;
+        }
+        if (current == recorded || legacy.contains(current)) {
+            if (writeFile(dst, bundled)) {
+                shipped.insert(id, QString::fromLatin1(bundledHash));
+                ++updated;
+            }
+        } else {
+            ++kept; // edited by the user
         }
     }
+    writeFile(shippedStatePath(), QJsonDocument(shipped).toJson(QJsonDocument::Indented));
+
     const QString games = m_configDir + QStringLiteral("/games.json");
     if (!QFile::exists(games) && QFile::copy(QStringLiteral(":/defaults/games.json"), games)) {
         QFile::setPermissions(games, QFile::ReadOwner | QFile::WriteOwner | QFile::ReadGroup | QFile::ReadOther);
     }
-    qCInfo(lcProfiles) << "installed" << n << "default profiles into" << dir.path();
+    if (installed || updated) {
+        qCInfo(lcProfiles) << "default profiles:" << installed << "installed," << updated << "updated," << kept << "kept (edited by you) in" << dir.path();
+    }
+    return firstRun;
+}
+
+bool ProfileManager::legacyInstall() const
+{
+    // Profiles directory from a release before .shipped.json existed.
+    return !QFile::exists(shippedStatePath()) && QDir(profilesDir()).exists();
+}
+
+bool ProfileManager::resetToDefault(const QString &id, QString *error)
+{
+    const QByteArray bundled = readAll(QStringLiteral(":/defaults/profiles/%1.json").arg(id));
+    if (bundled.isEmpty()) {
+        if (error) {
+            *error = QStringLiteral("'%1' is not a shipped profile").arg(id);
+        }
+        return false;
+    }
+    if (!writeFile(profilesDir() + QLatin1Char('/') + id + QStringLiteral(".json"), bundled)) {
+        if (error) {
+            *error = QStringLiteral("cannot write profile");
+        }
+        return false;
+    }
+    QJsonObject shipped = QJsonDocument::fromJson(readAll(shippedStatePath())).object();
+    shipped.insert(id, QString::fromLatin1(sha1(bundled)));
+    writeFile(shippedStatePath(), QJsonDocument(shipped).toJson(QJsonDocument::Indented));
+    reload();
     return true;
+}
+
+QStringList ProfileManager::shippedIds()
+{
+    QStringList ids;
+    QDirIterator it(QStringLiteral(":/defaults/profiles"), {QStringLiteral("*.json")});
+    while (it.hasNext()) {
+        ids << QFileInfo(it.next()).completeBaseName();
+    }
+    ids.sort();
+    return ids;
 }
 
 void ProfileManager::reload()

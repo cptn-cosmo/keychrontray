@@ -3,7 +3,8 @@
 A KDE Plasma 6 system tray app (Wayland and X11) for Keychron keyboards:
 
 - battery level in the tray icon and tooltip, with low-battery notifications
-- RGB lighting profiles, switched from the tray menu, the CLI or D-Bus, or automatically when a game starts
+- RGB lighting profiles as multi-color gradients across the keyboard (static, or slowly scrolling left to
+  right), switched from the tray menu, the CLI or D-Bus, or automatically when a game starts
 - shipped profiles for FFXIV (one per expansion), WoW, Baldur's Gate 3, Control, Cyberpunk 2077, Elden Ring, Hades,
   Remnant II, Halo MCC, Half-Life: Alyx, Beat Saber, TaleSpire, VRChat, Fellowship, Destiny 2, HELLDIVERS 2, and a
   generic "Steam game" fallback
@@ -122,6 +123,7 @@ keychrontray add-game 1174180                # new rule + profile (name from you
 keychrontray add-game 1174180 --profile desk # map to an existing profile
 keychrontray list-steam-games 40             # local library sorted by playtime
 keychrontray autostart on                    # start at every login
+keychrontray reset-profile wow-forever       # take the shipped version of a profile (discards your edits)
 ```
 Raw D-Bus: `qdbus6 io.github.keychrontray /KeychronTray io.github.keychrontray.Control.SetProfile bg3`.
 
@@ -154,20 +156,40 @@ Everything is plain text and safe to edit by hand. Changes are picked up live.
 | `~/.config/keychrontray/games.json` | game → profile rules, fallback, ignored Steam tool ids |
 | `~/.config/keychrontrayrc` | default profile, auto-switch, scan interval, battery thresholds, optional Steam API key |
 
-Profile example:
+Profile example (gradient):
 ```json
 {
     "name": "Endwalker",
     "group": "Final Fantasy XIV",
-    "effect": "Solid Color",
-    "color": "#e0b84a",
-    "brightness": 80,
-    "speed": 128
+    "gradient": {
+        "colors": ["#e0b84a", "#ffffff", "#4aa3e0"],
+        "motion": "static",
+        "cycleSeconds": 16
+    },
+    "brightness": 80
 }
 ```
+- `colors`: 2–16 stops from the left edge to the right edge.
+- `motion`: `"static"` spreads the stops across the keyboard. `"scroll"` repeats them in a loop (A → B → … → A) and
+  moves the pattern slowly from left to right, one keyboard width every `cycleSeconds` (2–600).
+- Colors blend in HSV along the shorter way round the hue wheel. To steer a blend, add a stop. Pure white
+  (`#ffffff`) has no hue, so gold → white → blue fades through white instead of through green.
+- Only hue and saturation are used. Brightness is one value for the whole keyboard (firmware limitation), so a
+  gradient can fade to white but not to black.
+- Gradients are rendered by this app into the keyboard's per-key color table (RAM only) and need the USB cable.
+  Scrolling keeps running while the app runs, at roughly 7–10 frames per second and about 2% of one CPU core. On
+  keyboards without Keychron's per-key protocol, the first color is shown as a solid color.
+
+A firmware effect instead of a gradient (this is how the Desk profile is defined):
+```json
+{ "name": "Desk", "effect": "Solid Color", "color": "#ffffff", "brightness": 60, "speed": 128 }
+```
 `effect` takes a name or the number from `docs/PROTOCOL.md`. `color` is `#rrggbb` (only hue and saturation are
-used) or `{"hue": 0-255, "saturation": 0-255}`. `brightness` is a percentage and `speed` is 0–255. The K10 HE
-firmware has one color per effect and no per-key colors over VIA, so profiles have no per-key section.
+used) or `{"hue": 0-255, "saturation": 0-255}`. `brightness` is a percentage and `speed` is 0–255.
+
+**Updates to the shipped themes.** When a new version changes a shipped profile, it replaces your copy only if you
+never edited it (tracked in `profiles/.shipped.json`). Edited and deleted profiles are left alone. To take a
+shipped version anyway, run `keychrontray reset-profile <id>` (or `--all`).
 
 Game rule example (`games.json`):
 ```json
@@ -210,8 +232,8 @@ Settings › Diagnostics, which has a *Copy report* button. For more detail run
 stay in 2.4 GHz mode. If it still says so with the cable connected, check Diagnostics: "cannot open … (permissions?)"
 in the log means the udev rule is missing.
 
-**Colors don't change, or change partially.** Make sure no other tool (VIA, Keychron Launcher in a browser) has the
-device open at the same time. Firmware other than the K10 HE's may number effects differently. Use effect numbers
+**Colors don't change, or change partially.** Another tool (VIA, Keychron Launcher in a browser) can have the
+device open at the same time. The app copes with that, but the other tool may overwrite its colors. Firmware other than the K10 HE's may number effects differently. Use effect numbers
 from your board's VIA JSON.
 
 **Battery shows "unavailable".** That's correct for cable and 2.4 GHz (see the table above). Over Bluetooth, check

@@ -1,9 +1,15 @@
 {
     "name": "WoW Forever",
     "group": "World of Warcraft",
-    "description": "Warm gold/bronze.",
-    "effect": "Breathing",
-    "color": "#c8902e",
-    "brightness": 85,
-    "speed": 40
+    "description": "Warm gold into bronze and ember.",
+    "gradient": {
+        "colors": [
+            "#ffd24a",
+            "#e08a1e",
+            "#9c3d10"
+        ],
+        "motion": "scroll",
+        "cycleSeconds": 24
+    },
+    "brightness": 85
 }

@@ -1,9 +1,14 @@
 {
     "name": "TaleSpire",
     "group": "Games",
-    "description": "Tabletop teal.",
-    "effect": "Solid Color",
-    "color": "#2ba88a",
-    "brightness": 75,
-    "speed": 128
+    "description": "Tabletop teal into parchment gold.",
+    "gradient": {
+        "colors": [
+            "#2ba88a",
+            "#e8c35a"
+        ],
+        "motion": "static",
+        "cycleSeconds": 12
+    },
+    "brightness": 75
 }

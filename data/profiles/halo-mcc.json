@@ -1,9 +1,15 @@
 {
     "name": "Halo: The Master Chief Collection",
     "group": "Games",
-    "description": "Mjolnir olive green.",
-    "effect": "Solid Color",
-    "color": "#4f7d2c",
-    "brightness": 80,
-    "speed": 128
+    "description": "Mjolnir green into visor gold.",
+    "gradient": {
+        "colors": [
+            "#3f8a2c",
+            "#9cc23a",
+            "#ffb02e"
+        ],
+        "motion": "static",
+        "cycleSeconds": 12
+    },
+    "brightness": 80
 }

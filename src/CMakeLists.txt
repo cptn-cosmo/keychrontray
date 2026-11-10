@@ -1,6 +1,8 @@
 add_library(keychrontray_core STATIC
     core/logging.cpp
     core/ledstate.cpp
+    core/gradient.cpp
+    core/gradientanimator.cpp
     core/viaprotocol.cpp
     core/keyboardbackend.cpp
     core/hidkeyboardbackend.cpp

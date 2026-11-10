@@ -78,7 +78,43 @@ Hardware results (2026-11-10, cable connected while keyboard in 2.4 GHz mode):
 
 Speed range 0–255. Single HSV color only (no secondary color in VIA).
 
-Per-key colors: not supported via VIA in this firmware. **[SRC]**
+Per-key colors: not available through VIA itself, but through Keychron's own RGB protocol (next section).
+
+## Keychron RGB protocol: per-key colors **[HW]**
+
+Source: branch `2025q3`, `keyboards/keychron/common/rgb/keychron_rgb.c` (the K10 HE build there sets
+`KEYCHRON_RGB_ENABLE`). The older `hall_effect_playground` branch does not have it. The shipped firmware v1.1.1
+does: the `A2` feature byte `0x8f` has bit 7 = `FEATURE_KEYCHRON_RGB`.
+
+Request `A8 <sub> args…`, reply `A8 <sub> <status 0 = ok> payload…`.
+
+| Sub | Purpose | Verified on K10 HE |
+|---|---|---|
+| `01` | protocol version | `01 00` → v1 **[HW]** |
+| `02` | save everything below to EEPROM | **never sent** except by an explicit "Save to keyboard" **[SRC]** |
+| `05` | LED count | `0x68` = 104 **[HW]** |
+| `06 row m0 m1 m2` | LED index per column of `row` (`ff` = none) | rows 0–5, 21 columns **[HW]** |
+| `07` / `08` | get/set per-key render type (0 solid, 1 breathing, 2–4 reactive) | type 0 **[HW]** (get) |
+| `09 start n` | read `n ≤ 9` LEDs as `h s v` | **[HW]** |
+| `0A start n h s v…` | write `n ≤ 9` LEDs (RAM only) | **[HW]** |
+| `0B` | mixed-RGB info | 2 layers × 5 effects **[HW]** |
+
+- Firmware quirk: `06` accepts `row == MATRIX_ROWS` (checks `row > MATRIX_ROWS`) and returns garbage for it,
+  and unused columns read as `00`, not `ff`. The app stops at the first failing row, drops the last successful one,
+  and keeps the first position seen per LED. **[HW]**
+- The per-key table is shown by **VIA effect 23 (`PER_KEY_RGB`)**; 24 is `MIXED_RGB`. Verified by setting 23
+  and reading it back. **[HW]**
+- Solid per-key mode uses each LED's **hue and saturation** and the **global** VIA brightness; the per-LED `v` is
+  ignored. So gradients can go to white (saturation 0) but not to black. **[SRC]**, consistent with **[HW]**
+- The effect-change reload (see above) does **not** reset the per-key table: colors written before switching
+  to effect 23 survive. **[HW]**
+- Timing: a full 104-LED frame = 12 packets ≈ 33 ms; 30 frames at 10 fps stayed at 33–35 ms per frame. **[HW]**
+- The app writes the table first, then switches to effect 23 (no flash of old colors), captures the original
+  table on connect and writes it back on exit. Scrolling sends one packet per event-loop turn, skips unchanged
+  packets, and used ~2% of one CPU core while scrolling. **[HW]**
+- Other programs that have the hidraw device open receive the same replies. The app drains stale reports before
+  each request and matches the full command header (VIA get/set: 3 bytes, `A8`: 2 bytes). Verified by reading
+  the keyboard from a second process while the app animates. **[HW]**
 
 ## Battery **[SRC]**
 
@@ -100,7 +136,9 @@ Per-key colors: not supported via VIA in this firmware. **[SRC]**
 | CLI over D-Bus: `set-profile`, `restore-default`, `list-profiles`, `status`, unknown profile → exit 1 | ✓ **[HW]** |
 | Auto-switch via fake processes (`Wow.exe` name match, `reaper … AppId=1245620`), newest-wins, revert on exit | ✓ **[HW]** |
 | Real non-Steam shortcut (Battle.net launcher, AppId 3259692658) ignored by the fallback | ✓ **[HW]** |
-| `09 03` save to EEPROM | **not executed** (mock only) |
+| Static and scrolling gradients (per-key), read-back of the table, restore of original table on quit | ✓ **[HW]** |
+| App keeps working while another process uses the same hidraw device | ✓ **[HW]** |
+| `09 03` / `A8 02` save to EEPROM | **not executed** (mock only) |
 | Battery via UPower/BlueZ | **untested**: no Bluetooth pairing; unavailable over cable/2.4 GHz (shown as such) |
 | Low-battery notification, sleep/resume, USB hotplug | mock/unit-tested logic only; not exercised on hardware |
 | Real game launches (Proton/Steam) | not exercised; detection logic verified with fake processes and live `/proc` |

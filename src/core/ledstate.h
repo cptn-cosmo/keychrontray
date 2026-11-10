@@ -19,6 +19,8 @@ struct LedState {
 // RGB-matrix effect table for the Keychron K10 HE (firmware hall_effect_playground, via_json/k10_he_ansi.json).
 // Other boards may number effects differently; profiles can always use the numeric id.
 namespace Effects {
+// Keychron custom effect that shows the per-key color table (verified on a K10 HE: VIA effect 23).
+constexpr uint8_t PerKeyRgb = 23;
 struct Entry {
     uint8_t id;
     const char *name;

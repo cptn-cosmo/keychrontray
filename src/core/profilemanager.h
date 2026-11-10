@@ -20,9 +20,13 @@ public:
     QString configDir() const { return m_configDir; }
     QString profilesDir() const;
 
-    // Copies bundled default profiles (and games.json) if the profiles directory does not exist yet.
-    // Returns true if defaults were installed.
+    // Installs bundled default profiles (and games.json) on first run, and on later runs upgrades shipped
+    // profiles the user has not edited, installs newly shipped ones, and leaves edited/deleted ones alone.
+    // Returns true on first run.
     bool ensureDefaults();
+    // Overwrites a profile with the bundled default (explicit user action).
+    bool resetToDefault(const QString &id, QString *error = nullptr);
+    static QStringList shippedIds();
     void reload();
 
     QList<Profile> profiles() const; // sorted by group, then name
@@ -39,6 +43,9 @@ Q_SIGNALS:
     void profilesChanged();
 
 private:
+    QString shippedStatePath() const;
+    bool legacyInstall() const;
+
     QString m_configDir;
     QMap<QString, Profile> m_profiles;
     QStringList m_errors;

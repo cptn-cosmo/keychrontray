@@ -1,9 +1,14 @@
 {
     "name": "Beat Saber",
     "group": "Games",
-    "description": "Blue saber.",
-    "effect": "Breathing",
-    "color": "#2a7fff",
-    "brightness": 90,
-    "speed": 90
+    "description": "Red and blue sabers.",
+    "gradient": {
+        "colors": [
+            "#ff2a3d",
+            "#2a7fff"
+        ],
+        "motion": "scroll",
+        "cycleSeconds": 6
+    },
+    "brightness": 90
 }

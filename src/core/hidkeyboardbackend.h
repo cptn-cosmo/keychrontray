@@ -23,6 +23,10 @@ public:
     bool apply(const LedState &state) override;
     bool saveToEeprom() override;
     void rescan() override;
+    int perKeyLedCount() const override { return int(m_positions.size()); }
+    QList<double> ledPositions() const override { return m_positions; }
+    std::optional<QList<HueSat>> readPerKey() override;
+    bool writePerKey(int start, const QList<HueSat> &colors) override;
 
     static constexpr uint16_t KeychronVid = 0x3434;
     static constexpr uint16_t KeychronLinkPid = 0xD030;
@@ -33,7 +37,10 @@ private:
     // After an effect change the firmware reloads color/brightness/speed; writes within ~15 ms are lost.
     static constexpr int EffectSettleMs = 40;
     void close();
+    void detectPerKey();
+    std::optional<QByteArray> kcRgb(std::initializer_list<uint8_t> args);
 
     hid_device_ *m_dev = nullptr;
     KeyboardInfo m_info;
+    QList<double> m_positions;
 };

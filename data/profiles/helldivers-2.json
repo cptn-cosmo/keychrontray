@@ -1,9 +1,15 @@
 {
     "name": "HELLDIVERS 2",
     "group": "Games",
-    "description": "Super Earth yellow.",
-    "effect": "Solid Color",
-    "color": "#ffe710",
-    "brightness": 90,
-    "speed": 128
+    "description": "Super Earth yellow into the fire of freedom.",
+    "gradient": {
+        "colors": [
+            "#ffe710",
+            "#ff8a00",
+            "#ff3c1a"
+        ],
+        "motion": "scroll",
+        "cycleSeconds": 12
+    },
+    "brightness": 90
 }

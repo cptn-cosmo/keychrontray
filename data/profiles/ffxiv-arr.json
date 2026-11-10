@@ -1,9 +1,15 @@
 {
     "name": "A Realm Reborn",
     "group": "Final Fantasy XIV",
-    "description": "ARR logo blue.",
-    "effect": "Solid Color",
-    "color": "#3a6fd8",
-    "brightness": 80,
-    "speed": 128
+    "description": "ARR blue into Bahamut's crimson fire.",
+    "gradient": {
+        "colors": [
+            "#2a5bd7",
+            "#7a2ad7",
+            "#d72a3c"
+        ],
+        "motion": "scroll",
+        "cycleSeconds": 20
+    },
+    "brightness": 80
 }

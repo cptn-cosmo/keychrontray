@@ -1,9 +1,15 @@
 {
     "name": "Shadowbringers",
     "group": "Final Fantasy XIV",
-    "description": "Violet of the First.",
-    "effect": "Solid Color",
-    "color": "#6b3fb8",
-    "brightness": 80,
-    "speed": 128
+    "description": "Violet of the First, Light and Darkness.",
+    "gradient": {
+        "colors": [
+            "#6b3fb8",
+            "#c04fd6",
+            "#2aa7d6"
+        ],
+        "motion": "scroll",
+        "cycleSeconds": 20
+    },
+    "brightness": 80
 }

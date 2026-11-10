@@ -42,6 +42,8 @@ Commands (talk to the running tray app over D-Bus):
 
 Commands that work without the tray app:
   autostart on|off|status Start the tray app automatically at login (XDG autostart entry)
+  reset-profile <id>|--all
+                          Replace a shipped profile with its current default (discards your edits)
   add-game <steam-appid> [--name NAME] [--profile ID]
                           Add a game rule (and a new profile copied from the Steam fallback,
                           unless --profile is given)
@@ -196,6 +198,28 @@ std::optional<int> runCli(const QStringList &argsIn)
     }
     if (cmd == QLatin1String("list-steam-games")) {
         return listSteam(args);
+    }
+    if (cmd == QLatin1String("reset-profile")) {
+        const QString id = args.value(1);
+        if (id.isEmpty()) {
+            err() << "reset-profile: expected a profile id or --all\n";
+            return 1;
+        }
+        ProfileManager pm;
+        pm.ensureDefaults();
+        const QStringList ids = id == QLatin1String("--all") ? ProfileManager::shippedIds() : QStringList{id};
+        for (const QString &i : ids) {
+            QString e;
+            if (!pm.resetToDefault(i, &e)) {
+                err() << "reset-profile: " << e << "\n";
+                return 1;
+            }
+            out() << "reset " << i << "\n";
+        }
+        if (running()) {
+            iface()->call(QStringLiteral("Reload"));
+        }
+        return 0;
     }
     if (cmd == QLatin1String("autostart")) {
         const QString v = args.value(1, QStringLiteral("status"));

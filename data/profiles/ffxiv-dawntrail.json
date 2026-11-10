@@ -1,9 +1,15 @@
 {
     "name": "Dawntrail",
     "group": "Final Fantasy XIV",
-    "description": "Tural turquoise.",
-    "effect": "Solid Color",
-    "color": "#19b3a6",
-    "brightness": 80,
-    "speed": 128
+    "description": "Tural turquoise into golden sun and coral.",
+    "gradient": {
+        "colors": [
+            "#19b3a6",
+            "#f2c14e",
+            "#ff7f50"
+        ],
+        "motion": "scroll",
+        "cycleSeconds": 22
+    },
+    "brightness": 80
 }

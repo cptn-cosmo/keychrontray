@@ -29,15 +29,38 @@ void HidKeyboardBackend::close()
         hid_close(m_dev);
         m_dev = nullptr;
         m_info = {};
+        m_positions.clear();
         qCInfo(lcHid) << "keyboard disconnected";
         Q_EMIT connectedChanged(false);
     }
+}
+
+namespace {
+// How many leading bytes of a reply must echo the request. Other programs (VIA, Keychron Launcher, scripts)
+// may have the same hidraw device open, and every open handle receives every reply.
+int headerLength(const QByteArray &request)
+{
+    switch (uint8_t(request[0])) {
+    case Via::CustomGetValue:
+    case Via::CustomSetValue:
+        return 3; // command, channel, value id
+    case Via::CustomSave:
+    case Via::KcRgb:
+        return 2; // command, channel / sub-command
+    default:
+        return 1;
+    }
+}
 }
 
 std::optional<QByteArray> HidKeyboardBackend::transact(const QByteArray &request, int timeoutMs)
 {
     if (!m_dev) {
         return std::nullopt;
+    }
+    unsigned char buf[64];
+    // Drop stale reports (late replies, other programs' traffic) before sending.
+    while (hid_read_timeout(m_dev, buf, sizeof buf, 0) > 0) {
     }
     // Unnumbered report: hidraw expects a leading 0 report id.
     QByteArray out(1, '\0');
@@ -47,8 +70,7 @@ std::optional<QByteArray> HidKeyboardBackend::transact(const QByteArray &request
         close();
         return std::nullopt;
     }
-    unsigned char buf[64];
-    // Skip unrelated input reports (the firmware may push unsolicited data); bounded by the timeout.
+    const int header = headerLength(request);
     QElapsedTimer t;
     t.start();
     while (t.elapsed() < timeoutMs) {
@@ -62,9 +84,10 @@ std::optional<QByteArray> HidKeyboardBackend::transact(const QByteArray &request
             break;
         }
         QByteArray reply(reinterpret_cast<const char *>(buf), n);
-        if (reply[0] == request[0] || uint8_t(reply[0]) == Via::Unhandled) {
+        if (uint8_t(reply[0]) == Via::Unhandled || reply.left(header) == request.left(header)) {
             return reply;
         }
+        // someone else's reply: keep waiting for ours
     }
     return std::nullopt;
 }
@@ -112,6 +135,7 @@ void HidKeyboardBackend::rescan()
             m_info.firmware = Via::firmwareVersionFromReply(*fw);
         }
         qCInfo(lcHid) << "connected:" << m_info.product << path << "VIA protocol" << m_info.viaProtocol << "firmware" << m_info.firmware;
+        detectPerKey();
         break;
     }
     hid_free_enumeration(list);
@@ -209,7 +233,108 @@ bool HidKeyboardBackend::saveToEeprom()
 {
     const auto c = Via::saveRgb();
     const auto r = transact(c);
-    const bool ok = r && Via::isAck(c, *r);
+    bool ok = r && Via::isAck(c, *r);
+    if (ok && perKeyLedCount() > 0) {
+        // Per-key colors live in a separate Keychron EEPROM block (explicit user action only).
+        ok = kcRgb({Via::KcRgbSave}).has_value();
+    }
     qCInfo(lcHid) << "save to EEPROM:" << (ok ? "ok" : "failed");
     return ok;
+}
+
+std::optional<QByteArray> HidKeyboardBackend::kcRgb(std::initializer_list<uint8_t> args)
+{
+    QByteArray req = Via::packet({Via::KcRgb});
+    int i = 1;
+    for (uint8_t a : args) {
+        req[i++] = char(a);
+    }
+    auto r = transact(req);
+    // Reply: A8 <cmd> <status 0 = ok> payload...
+    if (!r || r->size() < 3 || uint8_t(r->at(0)) != Via::KcRgb || r->at(1) != req[1] || r->at(2) != 0) {
+        return std::nullopt;
+    }
+    return r;
+}
+
+void HidKeyboardBackend::detectPerKey()
+{
+    m_positions.clear();
+    const auto feat = transact(Via::packet({Via::KcGetSupportFeature}));
+    if (!feat || feat->size() < 3 || uint8_t(feat->at(0)) != Via::KcGetSupportFeature || !(uint8_t(feat->at(2)) & Via::FeatureKeychronRgb)) {
+        qCInfo(lcHid) << "per-key RGB: not supported by this firmware (gradients fall back to a solid color)";
+        return;
+    }
+    const auto count = kcRgb({Via::KcRgbGetLedCount});
+    const int n = count ? uint8_t(count->at(3)) : 0;
+    if (n <= 0) {
+        return;
+    }
+    // LED index per (row, column). The firmware accepts row == MATRIX_ROWS (off-by-one) and returns garbage
+    // for it, and pads unused columns with 0, so: stop at the first failing row, drop the last successful
+    // row, and keep only the first position seen for each LED.
+    QList<QByteArray> rows;
+    for (int row = 0; row < 32; ++row) {
+        auto r = kcRgb({Via::KcRgbGetLedIndex, uint8_t(row), 0xff, 0xff, 0xff});
+        if (!r) {
+            break;
+        }
+        rows.append(r->mid(3, 24));
+    }
+    if (rows.size() < 2) {
+        return;
+    }
+    rows.removeLast();
+    QList<int> column(n, -1);
+    int maxCol = 0;
+    for (const QByteArray &r : std::as_const(rows)) {
+        for (int c = 0; c < r.size(); ++c) {
+            const int led = uint8_t(r[c]);
+            if (led < n && column[led] < 0) {
+                column[led] = c;
+                maxCol = std::max(maxCol, c);
+            }
+        }
+    }
+    QList<double> pos;
+    for (int c : std::as_const(column)) {
+        pos.append(c < 0 || maxCol == 0 ? 0.5 : double(c) / maxCol);
+    }
+    m_positions = pos;
+    qCInfo(lcHid) << "per-key RGB:" << n << "LEDs," << rows.size() << "rows," << maxCol + 1 << "columns";
+}
+
+std::optional<QList<HueSat>> HidKeyboardBackend::readPerKey()
+{
+    const int n = perKeyLedCount();
+    if (n == 0) {
+        return std::nullopt;
+    }
+    QList<HueSat> out;
+    for (int start = 0; start < n; start += MaxPerKeyChunk) {
+        const int cnt = std::min(MaxPerKeyChunk, n - start);
+        auto r = kcRgb({Via::KcRgbGetPerKeyColor, uint8_t(start), uint8_t(cnt)});
+        if (!r) {
+            return std::nullopt;
+        }
+        for (int i = 0; i < cnt; ++i) {
+            out.append(HueSat{uint8_t(r->at(3 + i * 3)), uint8_t(r->at(4 + i * 3))});
+        }
+    }
+    return out;
+}
+
+bool HidKeyboardBackend::writePerKey(int start, const QList<HueSat> &colors)
+{
+    if (!m_dev || colors.isEmpty() || colors.size() > MaxPerKeyChunk || start < 0 || start + colors.size() > perKeyLedCount()) {
+        return false;
+    }
+    QByteArray req = Via::packet({Via::KcRgb, Via::KcRgbSetPerKeyColor, uint8_t(start), uint8_t(colors.size())});
+    for (int i = 0; i < colors.size(); ++i) {
+        req[4 + i * 3] = char(colors[i].h);
+        req[5 + i * 3] = char(colors[i].s);
+        req[6 + i * 3] = char(255); // value is ignored by the solid per-key mode (global brightness)
+    }
+    auto r = transact(req);
+    return r && r->size() >= 3 && uint8_t(r->at(0)) == Via::KcRgb && r->at(2) == 0;
 }

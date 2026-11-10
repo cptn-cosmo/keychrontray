@@ -1,9 +1,15 @@
 {
     "name": "Baldur's Gate 3",
     "group": "Games",
-    "description": "Mind flayer purple.",
-    "effect": "Breathing",
-    "color": "#7b2cbf",
-    "brightness": 80,
-    "speed": 50
+    "description": "Mind-flayer purple into tadpole magenta.",
+    "gradient": {
+        "colors": [
+            "#4b1d8f",
+            "#a42cbf",
+            "#e0457b"
+        ],
+        "motion": "scroll",
+        "cycleSeconds": 18
+    },
+    "brightness": 80
 }

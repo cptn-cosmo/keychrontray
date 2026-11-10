@@ -1,8 +1,14 @@
 {
     "name": "Steam game",
-    "description": "Fallback for any Steam game without its own rule.",
-    "effect": "Solid Color",
-    "color": "#1b9df0",
-    "brightness": 70,
-    "speed": 128
+    "description": "Steam blues fading to pale grey-blue.",
+    "gradient": {
+        "colors": [
+            "#1b9df0",
+            "#66c0f4",
+            "#c7d5e0"
+        ],
+        "motion": "static",
+        "cycleSeconds": 12
+    },
+    "brightness": 70
 }

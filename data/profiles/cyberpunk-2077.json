@@ -1,9 +1,15 @@
 {
     "name": "Cyberpunk 2077",
     "group": "Games",
-    "description": "Night City yellow.",
-    "effect": "Solid Color",
-    "color": "#fcee0a",
-    "brightness": 85,
-    "speed": 128
+    "description": "Night City neon: yellow, red, cyan.",
+    "gradient": {
+        "colors": [
+            "#fcee0a",
+            "#ff003c",
+            "#00f0ff"
+        ],
+        "motion": "scroll",
+        "cycleSeconds": 10
+    },
+    "brightness": 85
 }

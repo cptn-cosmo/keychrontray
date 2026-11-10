@@ -10,6 +10,8 @@
 #include <QColorDialog>
 #include <QComboBox>
 #include <QDialogButtonBox>
+#include <QDoubleSpinBox>
+#include <QImage>
 #include <QFile>
 #include <QFontDatabase>
 #include <QRegularExpression>
@@ -168,19 +170,40 @@ QWidget *SettingsDialog::buildProfilesTab()
         b->setMinimumWidth(48);
         return h;
     };
+    m_style = new QComboBox;
+    m_style->addItem(QStringLiteral("Gradient (per-key colors)"));
+    m_style->addItem(QStringLiteral("Single color effect"));
+    m_stopsWidget = new QWidget;
+    m_stopsLayout = new QHBoxLayout(m_stopsWidget);
+    m_stopsLayout->setContentsMargins(0, 0, 0, 0);
+    m_motion = new QComboBox;
+    m_motion->addItem(QStringLiteral("Static"));
+    m_motion->addItem(QStringLiteral("Scroll slowly left → right"));
+    m_cycle = new QDoubleSpinBox;
+    m_cycle->setRange(2, 600);
+    m_cycle->setDecimals(0);
+    m_cycle->setSuffix(QStringLiteral(" s per pass"));
+    m_gradientPreview = new QLabel;
+    m_gradientPreview->setMinimumHeight(22);
+    m_gradientPreview->setScaledContents(true);
+
+    m_form = form;
     form->addRow(QStringLiteral("File id:"), m_idLabel);
     form->addRow(QStringLiteral("Name:"), m_name);
     form->addRow(QStringLiteral("Group:"), m_group);
     form->addRow(QStringLiteral("Description:"), m_description);
+    form->addRow(QStringLiteral("Style:"), m_style);
+    form->addRow(QStringLiteral("Colors (left → right):"), m_stopsWidget);
+    form->addRow(QStringLiteral("Motion:"), row(m_motion, m_cycle));
+    form->addRow(QString(), m_gradientPreview);
     form->addRow(QStringLiteral("Effect:"), m_effect);
     form->addRow(QStringLiteral("Color:"), m_colorButton);
     form->addRow(QStringLiteral("Brightness:"), row(m_brightness, m_brightnessLabel));
     form->addRow(QStringLiteral("Speed:"), row(m_speed, m_speedLabel));
-    auto *note = new QLabel(QStringLiteral("The K10 HE firmware supports one color per effect; per-key colors are not available over VIA. "
-                                           "Rainbow/cycle effects ignore the color."));
-    note->setWordWrap(true);
-    note->setEnabled(false);
-    form->addRow(note);
+    m_styleNote = new QLabel;
+    m_styleNote->setWordWrap(true);
+    m_styleNote->setEnabled(false);
+    form->addRow(m_styleNote);
     m_livePreview = new QCheckBox(QStringLiteral("Live preview on the keyboard (RAM only, nothing is saved to the keyboard)"));
     m_livePreview->setChecked(true);
     form->addRow(m_livePreview);
@@ -220,9 +243,46 @@ QWidget *SettingsDialog::buildProfilesTab()
     connect(m_effect, &QComboBox::currentIndexChanged, this, &SettingsDialog::editorChanged);
     connect(m_brightness, &QSlider::valueChanged, this, &SettingsDialog::editorChanged);
     connect(m_speed, &QSlider::valueChanged, this, &SettingsDialog::editorChanged);
+    connect(m_style, &QComboBox::currentIndexChanged, this, [this](int i) {
+        if (m_loading) {
+            return;
+        }
+        if (i == 0 && !m_edit.gradient) {
+            // Start from the single color plus a hue-rotated partner.
+            Gradient g;
+            g.stops = {m_edit.color, QColor::fromHsv((qMax(0, m_edit.color.hsvHue()) + 60) % 360, qMax(160, m_edit.color.hsvSaturation()), 255)};
+            m_edit.gradient = g;
+        } else if (i == 1 && m_edit.gradient) {
+            m_edit.color = m_edit.gradient->stops.value(0, m_edit.color);
+            m_edit.gradient.reset();
+            if (m_edit.effect == Effects::PerKeyRgb) {
+                m_edit.effect = 1;
+            }
+            m_effect->setCurrentIndex(m_effect->findData(m_edit.effect));
+            updateColorButton();
+        }
+        rebuildStopButtons();
+        updateStyleRows();
+        editorChanged();
+    });
+    connect(m_motion, &QComboBox::currentIndexChanged, this, [this](int i) {
+        if (m_loading || !m_edit.gradient) {
+            return;
+        }
+        m_edit.gradient->motion = i == 1 ? Gradient::Motion::Scroll : Gradient::Motion::Static;
+        updateStyleRows();
+        editorChanged();
+    });
+    connect(m_cycle, &QDoubleSpinBox::valueChanged, this, [this](double v) {
+        if (m_loading || !m_edit.gradient) {
+            return;
+        }
+        m_edit.gradient->cycleSeconds = v;
+        editorChanged();
+    });
     connect(m_livePreview, &QCheckBox::toggled, this, [this](bool on) {
         if (on) {
-            m_tray->lighting()->preview(m_edit.ledState());
+            m_tray->lighting()->preview(LightingScene::fromProfile(m_edit));
         } else {
             m_tray->lighting()->endPreview();
         }
@@ -262,7 +322,7 @@ QWidget *SettingsDialog::buildProfilesTab()
             != QMessageBox::Yes) {
             return;
         }
-        m_tray->lighting()->preview(m_edit.ledState());
+        m_tray->lighting()->preview(LightingScene::fromProfile(m_edit));
         const bool ok = m_tray->lighting()->saveToKeyboard();
         if (!m_livePreview->isChecked()) {
             m_tray->lighting()->endPreview();
@@ -315,9 +375,18 @@ void SettingsDialog::reloadProfileList(const QString &select)
         auto *item = new QListWidgetItem(p.group.isEmpty() ? p.displayName() : QStringLiteral("%1 › %2").arg(p.group, p.displayName()));
         item->setData(Qt::UserRole, p.id);
         item->setIcon([&] {
-            QPixmap px(16, 16);
-            px.fill(p.color);
-            return QIcon(px);
+            QImage img(16, 16, QImage::Format_RGB32);
+            for (int x = 0; x < 16; ++x) {
+                QColor c = p.color;
+                if (p.gradient) {
+                    const HueSat hs = p.gradient->sample(x / 15.0);
+                    c = ColorConv::fromQmk(hs.h, hs.s);
+                }
+                for (int y = 0; y < 16; ++y) {
+                    img.setPixelColor(x, y, c);
+                }
+            }
+            return QIcon(QPixmap::fromImage(img));
         }());
         m_profileList->addItem(item);
         if (p.id == select) {
@@ -366,11 +435,18 @@ void SettingsDialog::loadProfileIntoEditor(const QString &id)
     m_brightnessLabel->setText(QStringLiteral("%1%").arg(p->brightnessPercent));
     m_speedLabel->setText(QString::number(p->speed));
     updateColorButton();
+    m_style->setCurrentIndex(p->gradient ? 0 : 1);
+    if (p->gradient) {
+        m_motion->setCurrentIndex(p->gradient->motion == Gradient::Motion::Scroll ? 1 : 0);
+        m_cycle->setValue(p->gradient->cycleSeconds);
+    }
+    rebuildStopButtons();
+    updateStyleRows();
     m_loading = false;
     m_dirty = false;
     m_saveProfile->setEnabled(false);
     if (m_livePreview->isChecked()) {
-        m_tray->lighting()->preview(m_edit.ledState());
+        m_tray->lighting()->preview(LightingScene::fromProfile(m_edit));
     }
 }
 
@@ -390,7 +466,10 @@ void SettingsDialog::editorChanged()
     m_edit.name = m_name->text();
     m_edit.group = m_group->currentText().trimmed();
     m_edit.description = m_description->text();
-    m_edit.effect = uint8_t(m_effect->currentData().toInt());
+    if (!m_edit.gradient) {
+        m_edit.effect = uint8_t(m_effect->currentData().toInt());
+    }
+    updateGradientPreview();
     m_edit.brightnessPercent = m_brightness->value();
     m_edit.speed = uint8_t(m_speed->value());
     m_brightnessLabel->setText(QStringLiteral("%1%").arg(m_edit.brightnessPercent));
@@ -398,7 +477,7 @@ void SettingsDialog::editorChanged()
     m_dirty = true;
     m_saveProfile->setEnabled(true);
     if (m_livePreview->isChecked()) {
-        m_tray->lighting()->preview(m_edit.ledState());
+        m_tray->lighting()->preview(LightingScene::fromProfile(m_edit));
     }
 }
 
@@ -783,4 +862,100 @@ void SettingsDialog::refreshDiagnostics()
     l << QStringLiteral("Games: %1").arg(m_tray->detector()->gamesFile());
     l << QStringLiteral("Steam: %1").arg(m_tray->steam()->isValid() ? m_tray->steam()->root() : QStringLiteral("not found"));
     m_diag->setText(l.join(QLatin1Char('\n')));
+}
+
+void SettingsDialog::rebuildStopButtons()
+{
+    while (QLayoutItem *it = m_stopsLayout->takeAt(0)) {
+        delete it->widget();
+        delete it;
+    }
+    if (!m_edit.gradient) {
+        return;
+    }
+    QList<QColor> &stops = m_edit.gradient->stops;
+    for (int i = 0; i < stops.size(); ++i) {
+        auto *b = new QPushButton;
+        QPixmap px(28, 16);
+        px.fill(stops[i]);
+        b->setIcon(QIcon(px));
+        b->setIconSize(px.size());
+        b->setToolTip(QStringLiteral("%1 – click to change").arg(stops[i].name()));
+        connect(b, &QPushButton::clicked, this, [this, i] {
+            if (!m_edit.gradient || i >= m_edit.gradient->stops.size()) {
+                return;
+            }
+            const QColor before = m_edit.gradient->stops[i];
+            QColorDialog dlg(before, this);
+            dlg.setWindowTitle(QStringLiteral("Gradient color %1").arg(i + 1));
+            connect(&dlg, &QColorDialog::currentColorChanged, this, [this, i](const QColor &c) {
+                m_edit.gradient->stops[i] = c;
+                editorChanged();
+            });
+            if (dlg.exec() != QDialog::Accepted) {
+                m_edit.gradient->stops[i] = before;
+            }
+            rebuildStopButtons();
+            editorChanged();
+        });
+        m_stopsLayout->addWidget(b);
+    }
+    auto *add = new QPushButton(QIcon::fromTheme(QStringLiteral("list-add")), QString());
+    if (add->icon().isNull()) {
+        add->setText(QStringLiteral("+"));
+    }
+    add->setToolTip(QStringLiteral("Add a color"));
+    add->setEnabled(stops.size() < 16);
+    connect(add, &QPushButton::clicked, this, [this] {
+        m_edit.gradient->stops.append(m_edit.gradient->stops.last());
+        rebuildStopButtons();
+        editorChanged();
+    });
+    auto *remove = new QPushButton(QIcon::fromTheme(QStringLiteral("list-remove")), QString());
+    if (remove->icon().isNull()) {
+        remove->setText(QStringLiteral("−"));
+    }
+    remove->setToolTip(QStringLiteral("Remove the last color"));
+    remove->setEnabled(stops.size() > 2);
+    connect(remove, &QPushButton::clicked, this, [this] {
+        m_edit.gradient->stops.removeLast();
+        rebuildStopButtons();
+        editorChanged();
+    });
+    m_stopsLayout->addWidget(add);
+    m_stopsLayout->addWidget(remove);
+    m_stopsLayout->addStretch();
+    updateGradientPreview();
+}
+
+void SettingsDialog::updateGradientPreview()
+{
+    if (!m_edit.gradient) {
+        m_gradientPreview->clear();
+        return;
+    }
+    // Same blend as on the keyboard (hue/saturation only, full value).
+    QImage img(210, 1, QImage::Format_RGB32);
+    for (int x = 0; x < img.width(); ++x) {
+        const HueSat hs = m_edit.gradient->sample(double(x) / (img.width() - 1), 0.0);
+        img.setPixelColor(x, 0, ColorConv::fromQmk(hs.h, hs.s));
+    }
+    m_gradientPreview->setPixmap(QPixmap::fromImage(img));
+}
+
+void SettingsDialog::updateStyleRows()
+{
+    const bool grad = m_edit.gradient.has_value();
+    m_form->setRowVisible(m_stopsWidget, grad);
+    m_form->setRowVisible(m_motion->parentWidget(), grad);
+    m_form->setRowVisible(m_gradientPreview, grad);
+    m_form->setRowVisible(m_effect, !grad);
+    m_form->setRowVisible(m_colorButton, !grad);
+    m_form->setRowVisible(m_speed->parentWidget(), !grad);
+    m_cycle->setEnabled(grad && m_edit.gradient->motion == Gradient::Motion::Scroll);
+    const bool perKey = m_tray->backend()->perKeyLedCount() > 0 || !m_tray->backend()->isConnected();
+    m_styleNote->setText(grad ? (perKey ? QStringLiteral("Only hue and saturation are used; brightness is one value for the whole keyboard, so gradients "
+                                                          "can fade to white but not to black. Scrolling is rendered by this app (keyboard on USB).")
+                                        : QStringLiteral("This keyboard's firmware has no per-key colors: the first color is shown as a solid color."))
+                              : QStringLiteral("Firmware effects use one color; rainbow/cycle effects ignore it."));
 }

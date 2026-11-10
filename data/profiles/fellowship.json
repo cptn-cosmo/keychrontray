@@ -1,9 +1,14 @@
 {
     "name": "Fellowship",
     "group": "Games",
-    "description": "Placeholder amber, edit to taste.",
-    "effect": "Solid Color",
-    "color": "#d98c2b",
-    "brightness": 80,
-    "speed": 128
+    "description": "Placeholder amber and green, edit to taste.",
+    "gradient": {
+        "colors": [
+            "#d98c2b",
+            "#5b8c3a"
+        ],
+        "motion": "static",
+        "cycleSeconds": 12
+    },
+    "brightness": 80
 }

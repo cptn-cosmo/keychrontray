@@ -1,9 +1,15 @@
 {
     "name": "Heavensward",
     "group": "Final Fantasy XIV",
-    "description": "Ishgard ice blue.",
-    "effect": "Solid Color",
-    "color": "#a9d4f5",
-    "brightness": 80,
-    "speed": 128
+    "description": "Ishgard snow into ice blue and dragon-night blue.",
+    "gradient": {
+        "colors": [
+            "#ffffff",
+            "#a9d4f5",
+            "#1f4fa8"
+        ],
+        "motion": "static",
+        "cycleSeconds": 16
+    },
+    "brightness": 80
 }

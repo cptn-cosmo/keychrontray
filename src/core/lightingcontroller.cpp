@@ -1,4 +1,5 @@
 #include "lightingcontroller.h"
+#include "gradientanimator.h"
 #include "keyboardbackend.h"
 #include "logging.h"
 #include "profilemanager.h"
@@ -11,16 +12,25 @@
 #include <QSaveFile>
 #include <QStandardPaths>
 
+LightingScene LightingScene::fromProfile(const Profile &p)
+{
+    return LightingScene{p.ledState(), p.gradient};
+}
+
 LightingController::LightingController(KeyboardBackend *backend, ProfileManager *profiles, const QString &statePath, QObject *parent)
     : QObject(parent)
     , m_backend(backend)
     , m_profiles(profiles)
+    , m_animator(new GradientAnimator(backend, this))
     , m_statePath(statePath.isEmpty() ? QStandardPaths::writableLocation(QStandardPaths::GenericStateLocation) + QStringLiteral("/keychrontray/original.json")
                                       : statePath)
 {
     connect(m_backend, &KeyboardBackend::connectedChanged, this, &LightingController::onConnectedChanged);
     connect(m_profiles, &ProfileManager::profilesChanged, this, [this] {
         reapply();
+    });
+    connect(m_animator, &GradientAnimator::failed, this, [this] {
+        m_lastApplied.reset();
     });
 }
 
@@ -57,9 +67,9 @@ void LightingController::setGameProfile(const QString &id, const QString &gameLa
     reapply();
 }
 
-void LightingController::preview(const LedState &state)
+void LightingController::preview(const LightingScene &scene)
 {
-    m_preview = state;
+    m_preview = scene;
     reapply();
 }
 
@@ -96,15 +106,49 @@ QString LightingController::activeReason() const
     return QStringLiteral("default");
 }
 
-std::optional<LedState> LightingController::resolve(const QString &id) const
+std::optional<LightingScene> LightingController::resolve(const QString &id) const
 {
     if (id == KeyboardProfileId) {
-        return m_original;
+        if (!m_original) {
+            return std::nullopt;
+        }
+        return LightingScene{*m_original, std::nullopt};
     }
     if (auto p = m_profiles->profile(id)) {
-        return p->ledState();
+        return LightingScene::fromProfile(*p);
     }
     return std::nullopt;
+}
+
+bool LightingController::applyScene(const LightingScene &scene)
+{
+    m_animator->stop();
+    LedState base = scene.base;
+    if (scene.gradient) {
+        if (m_backend->perKeyLedCount() > 0) {
+            // Per-key table first, then switch the effect: no flash of stale colors.
+            if (!m_animator->showFrame(*scene.gradient)) {
+                return false;
+            }
+            m_perKeyDirty = m_originalPerKey.has_value(); // only meaningful if there is a table to restore
+            base.effect = Effects::PerKeyRgb;
+        } else if (base.effect == Effects::PerKeyRgb) {
+            base.effect = 1; // no per-key support: solid first color
+        }
+    } else if (m_perKeyDirty && m_originalPerKey && base.effect == Effects::PerKeyRgb) {
+        // A per-key scene (e.g. the original) after our gradients: put the original table back first.
+        if (!m_animator->writeTable(*m_originalPerKey)) {
+            return false;
+        }
+        m_perKeyDirty = false;
+    }
+    if (!m_backend->apply(base)) {
+        return false;
+    }
+    if (scene.gradient && m_backend->perKeyLedCount() > 0) {
+        m_animator->start(*scene.gradient);
+    }
+    return true;
 }
 
 void LightingController::reapply(bool force)
@@ -118,18 +162,19 @@ void LightingController::reapply(bool force)
     if (!m_backend->isConnected()) {
         return;
     }
-    std::optional<LedState> target = m_preview ? m_preview : resolve(active);
-    if (!target) {
+    std::optional<LightingScene> target = m_preview ? m_preview : resolve(active);
+    if (!target && m_original) {
         // Unknown default profile, or original not captured: fall back to original.
-        target = m_original;
+        target = LightingScene{*m_original, std::nullopt};
     }
     if (!target || (!force && m_lastApplied == target)) {
         return;
     }
-    if (m_backend->apply(*target)) {
+    if (applyScene(*target)) {
         m_lastApplied = target;
-        persist(m_original && *target != *m_original);
-        qCInfo(lcProfiles) << "applied" << (m_preview ? QStringLiteral("preview") : active) << "(" << reason << ")";
+        persist(m_perKeyDirty || (m_original && target->base != *m_original));
+        qCInfo(lcProfiles) << "applied" << (m_preview ? QStringLiteral("preview") : active) << "(" << reason << ")"
+                           << (target->gradient ? (target->gradient->motion == Gradient::Motion::Scroll ? "scrolling gradient" : "static gradient") : "");
     } else {
         m_lastApplied.reset();
         Q_EMIT applyFailed(QStringLiteral("Could not apply lighting to the keyboard"));
@@ -139,6 +184,7 @@ void LightingController::reapply(bool force)
 void LightingController::onConnectedChanged(bool connected)
 {
     if (!connected) {
+        m_animator->stop();
         m_lastApplied.reset();
         return;
     }
@@ -163,14 +209,27 @@ void LightingController::captureOriginal()
             s.brightness = uint8_t(o.value(QLatin1String("brightness")).toInt());
             s.speed = uint8_t(o.value(QLatin1String("speed")).toInt());
             m_original = s;
+            const QByteArray pk = QByteArray::fromHex(o.value(QLatin1String("perKey")).toString().toLatin1());
+            if (!pk.isEmpty() && pk.size() % 2 == 0) {
+                QList<HueSat> t;
+                for (int i = 0; i < pk.size(); i += 2) {
+                    t.append(HueSat{uint8_t(pk[i]), uint8_t(pk[i + 1])});
+                }
+                m_originalPerKey = t;
+                m_perKeyDirty = true;
+            }
+            if (!m_originalPerKey) {
+                m_perKeyDirty = false; // older state file: the original per-key table is unknown, nothing to restore
+            }
             qCInfo(lcProfiles) << "previous run did not restore lighting; using saved original" << s.toString();
             return;
         }
     }
     m_original = m_backend->readState();
     if (m_original) {
-        qCInfo(lcProfiles) << "captured original lighting" << m_original->toString();
-        m_lastApplied = m_original; // that is what the keyboard shows right now
+        m_originalPerKey = m_backend->readPerKey();
+        qCInfo(lcProfiles) << "captured original lighting" << m_original->toString() << (m_originalPerKey ? "+ per-key table" : "");
+        m_lastApplied = LightingScene{*m_original, std::nullopt}; // that is what the keyboard shows right now
         persist(false);
     }
 }
@@ -193,31 +252,57 @@ void LightingController::persist(bool dirty)
         {QStringLiteral("brightness"), m_original->brightness},
         {QStringLiteral("speed"), m_original->speed},
     };
+    if (m_originalPerKey) {
+        QByteArray pk;
+        for (const HueSat &hs : std::as_const(*m_originalPerKey)) {
+            pk.append(char(hs.h));
+            pk.append(char(hs.s));
+        }
+        o.insert(QStringLiteral("perKey"), QString::fromLatin1(pk.toHex()));
+    }
     f.write(QJsonDocument(o).toJson(QJsonDocument::Compact));
     f.commit();
 }
 
 bool LightingController::saveToKeyboard()
 {
-    if (!m_backend->isConnected() || !m_backend->saveToEeprom()) {
+    if (!m_backend->isConnected()) {
         return false;
     }
-    // The saved state is now the keyboard's own default.
-    m_original = m_lastApplied;
-    persist(false);
-    return true;
+    m_animator->stop(); // a scrolling gradient is saved as its current frame
+    const bool ok = m_backend->saveToEeprom();
+    if (ok) {
+        // The saved state is now the keyboard's own default.
+        m_original = m_lastApplied ? m_lastApplied->base : m_backend->readState();
+        if (m_original && m_lastApplied && m_lastApplied->gradient && m_backend->perKeyLedCount() > 0) {
+            m_original->effect = Effects::PerKeyRgb;
+        }
+        m_originalPerKey = m_backend->readPerKey();
+        m_perKeyDirty = false;
+        persist(false);
+    }
+    if (m_lastApplied && m_lastApplied->gradient) {
+        m_animator->start(*m_lastApplied->gradient);
+    }
+    return ok;
 }
 
 void LightingController::restoreOriginal()
 {
+    m_animator->stop();
     m_preview.reset();
-    if (m_original && m_backend->isConnected() && m_lastApplied != m_original) {
-        if (m_backend->apply(*m_original)) {
-            qCInfo(lcProfiles) << "restored original lighting";
-            m_lastApplied = m_original;
-        }
+    if (!m_original || !m_backend->isConnected()) {
+        return;
     }
-    if (m_lastApplied == m_original) {
+    if (m_perKeyDirty && m_originalPerKey && m_animator->writeTable(*m_originalPerKey)) {
+        m_perKeyDirty = false;
+    }
+    const LightingScene orig{*m_original, std::nullopt};
+    if (m_lastApplied != orig && m_backend->apply(*m_original)) {
+        qCInfo(lcProfiles) << "restored original lighting";
+        m_lastApplied = orig;
+    }
+    if (m_lastApplied == orig && !m_perKeyDirty) {
         persist(false);
     }
 }

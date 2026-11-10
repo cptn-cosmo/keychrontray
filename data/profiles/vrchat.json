@@ -1,9 +1,14 @@
 {
     "name": "VRChat",
     "group": "Games",
-    "description": "VRChat cyan.",
-    "effect": "Solid Color",
-    "color": "#00b7d6",
-    "brightness": 70,
-    "speed": 128
+    "description": "VRChat cyan into violet.",
+    "gradient": {
+        "colors": [
+            "#00d0ff",
+            "#7a5cff"
+        ],
+        "motion": "scroll",
+        "cycleSeconds": 16
+    },
+    "brightness": 70
 }

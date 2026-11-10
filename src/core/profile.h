@@ -1,5 +1,6 @@
 #pragma once
 
+#include "gradient.h"
 #include "ledstate.h"
 
 #include <QColor>
@@ -18,8 +19,20 @@
 //   "description": "optional"
 // }
 //
-// Only hue and saturation of "color" are used. Brightness is a separate field, matching the firmware.
-// The K10 HE firmware supports one color per effect and no per-key colors over VIA (docs/PROTOCOL.md).
+// or, as a multi-color gradient (per-key RGB, Keychron firmware with KEYCHRON_RGB):
+//
+// {
+//   "name": "Endwalker",
+//   "gradient": {
+//     "colors": ["#e0b84a", "#ffffff", "#4aa3e0"],   // at least 2, left to right
+//     "motion": "scroll",                             // "static" or "scroll" (moves left to right)
+//     "cycleSeconds": 16                              // scroll: seconds per keyboard width
+//   },
+//   "brightness": 80
+// }
+//
+// Only hue and saturation of colors are used; brightness is one global value (firmware limitation), so a
+// gradient cannot fade to black. With "gradient", "effect" and "color" are ignored.
 struct Profile {
     QString id;
     QString name;
@@ -29,7 +42,10 @@ struct Profile {
     QColor color = QColor(255, 255, 255);
     int brightnessPercent = 100;
     uint8_t speed = 128;
+    std::optional<Gradient> gradient;
 
+    bool isGradient() const { return gradient.has_value(); }
+    // Global (VIA) part. For gradients: the per-key effect, brightness, and the first stop as base color.
     LedState ledState() const;
     static Profile fromLedState(const QString &id, const QString &name, const LedState &s);
 

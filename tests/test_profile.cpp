@@ -2,6 +2,8 @@
 #include "profilemanager.h"
 
 #include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
@@ -125,6 +127,55 @@ private Q_SLOTS:
         }
         QVERIFY(cfg->find(QStringLiteral("ffxiv"))->steamAppIds.contains(39210));
         QVERIFY(cfg->find(QStringLiteral("wow-forever"))->processNames.contains(QStringLiteral("Wow.exe")));
+    }
+
+    void upgradesOnlyUntouchedDefaults()
+    {
+        QTemporaryDir dir;
+        ProfileManager pm(dir.path());
+        QDir().mkpath(pm.profilesDir());
+        // A previous release's untouched default (byte-identical r1 file) and a user-edited one.
+        const QByteArray r1Control = "{\n    \"name\": \"Control\",\n    \"group\": \"Games\",\n    \"description\": \"Oldest House red (black = unlit keys are not possible with one color).\",\n    \"effect\": \"Solid Color\",\n    \"color\": \"#d0021b\",\n    \"brightness\": 90,\n    \"speed\": 128\n}\n";
+        auto write = [&](const QString &id, const QByteArray &data) {
+            QFile f(pm.profilesDir() + QLatin1Char('/') + id + QStringLiteral(".json"));
+            QVERIFY(f.open(QIODevice::WriteOnly));
+            f.write(data);
+        };
+        write(QStringLiteral("control"), r1Control);
+        write(QStringLiteral("bg3"), "{\"name\":\"My BG3\",\"effect\":\"Solid Color\",\"color\":\"#00ff00\"}");
+        // (all other shipped profiles are "deleted" in this legacy install)
+        QVERIFY(!pm.ensureDefaults()); // not a first run
+        pm.reload();
+        QVERIFY2(pm.profile(QStringLiteral("control"))->isGradient(), "untouched r1 default must be upgraded");
+        QCOMPARE(pm.profile(QStringLiteral("bg3"))->name, QStringLiteral("My BG3")); // edited: kept
+        QVERIFY(!pm.contains(QStringLiteral("hades"))); // deleted: not resurrected
+
+        // Second run: nothing changes; the upgraded file is now tracked in .shipped.json
+        QVERIFY(QFile::exists(pm.profilesDir() + QStringLiteral("/.shipped.json")));
+        pm.ensureDefaults();
+        pm.reload();
+        QCOMPARE(pm.profile(QStringLiteral("bg3"))->name, QStringLiteral("My BG3"));
+
+        // A newly shipped default (never recorded) gets installed
+        QFile shipped(pm.profilesDir() + QStringLiteral("/.shipped.json"));
+        QVERIFY(shipped.open(QIODevice::ReadOnly));
+        QJsonObject o = QJsonDocument::fromJson(shipped.readAll()).object();
+        shipped.close();
+        QVERIFY(!pm.contains(QStringLiteral("hades"))); // still not resurrected on the second run
+        // simulate a release that newly ships hades: never recorded, so it gets installed
+        o.remove(QStringLiteral("hades"));
+        QVERIFY(shipped.open(QIODevice::WriteOnly));
+        shipped.write(QJsonDocument(o).toJson());
+        shipped.close();
+        pm.ensureDefaults();
+        pm.reload();
+        QVERIFY(pm.contains(QStringLiteral("hades")));
+
+        // Explicit reset takes the shipped gradient
+        QVERIFY(pm.resetToDefault(QStringLiteral("bg3")));
+        QVERIFY(pm.profile(QStringLiteral("bg3"))->isGradient());
+        QVERIFY(!pm.resetToDefault(QStringLiteral("my-own")));
+        QVERIFY(ProfileManager::shippedIds().contains(QStringLiteral("ffxiv-dawntrail")));
     }
 
     void managerSaveRemoveAndErrors()

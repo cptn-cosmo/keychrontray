@@ -1,5 +1,6 @@
 #include "profile.h"
 
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QRegularExpression>
@@ -22,9 +23,10 @@ QColor ColorConv::fromQmk(uint8_t hue, uint8_t saturation)
 LedState Profile::ledState() const
 {
     LedState s;
-    s.effect = effect;
-    s.hue = ColorConv::toQmkHue(color);
-    s.saturation = uint8_t(color.hsvSaturation());
+    const QColor base = gradient ? gradient->stops.value(0, color) : color;
+    s.effect = gradient ? Effects::PerKeyRgb : effect;
+    s.hue = ColorConv::toQmkHue(base);
+    s.saturation = uint8_t(base.hsvSaturation());
     s.brightness = uint8_t(std::lround(qBound(0, brightnessPercent, 100) * 255.0 / 100.0));
     s.speed = speed;
     return s;
@@ -102,6 +104,44 @@ std::optional<Profile> Profile::fromJson(const QString &id, const QByteArray &js
         return fail(QStringLiteral("color must be \"#rrggbb\" or {\"hue\":..,\"saturation\":..}"));
     }
 
+    const QJsonValue gr = o.value(QLatin1String("gradient"));
+    if (!gr.isUndefined()) {
+        if (!gr.isObject()) {
+            return fail(QStringLiteral("gradient must be an object"));
+        }
+        const QJsonObject g = gr.toObject();
+        Gradient grad;
+        for (const QJsonValue &c : g.value(QLatin1String("colors")).toArray()) {
+            const QColor qc = QColor::fromString(c.toString());
+            if (!qc.isValid()) {
+                return fail(QStringLiteral("gradient: invalid color '%1' (expected #rrggbb)").arg(c.toString()));
+            }
+            grad.stops.append(qc);
+        }
+        if (grad.stops.size() < 2) {
+            return fail(QStringLiteral("gradient needs at least 2 colors"));
+        }
+        if (grad.stops.size() > 16) {
+            return fail(QStringLiteral("gradient supports at most 16 colors"));
+        }
+        const QString motion = g.value(QLatin1String("motion")).toString(QStringLiteral("static"));
+        if (motion == QLatin1String("static")) {
+            grad.motion = Gradient::Motion::Static;
+        } else if (motion == QLatin1String("scroll")) {
+            grad.motion = Gradient::Motion::Scroll;
+        } else {
+            return fail(QStringLiteral("gradient motion must be \"static\" or \"scroll\""));
+        }
+        const QJsonValue cyc = g.value(QLatin1String("cycleSeconds"));
+        if (!cyc.isUndefined()) {
+            if (!cyc.isDouble() || cyc.toDouble() < 2 || cyc.toDouble() > 600) {
+                return fail(QStringLiteral("gradient cycleSeconds must be a number 2-600"));
+            }
+            grad.cycleSeconds = cyc.toDouble();
+        }
+        p.gradient = grad;
+    }
+
     const QJsonValue br = o.value(QLatin1String("brightness"));
     if (!br.isUndefined()) {
         if (!br.isDouble() || br.toDouble() < 0 || br.toDouble() > 100) {
@@ -129,8 +169,20 @@ QByteArray Profile::toJson() const
     if (!description.isEmpty()) {
         o.insert(QLatin1String("description"), description);
     }
-    o.insert(QLatin1String("effect"), Effects::nameFor(effect));
-    o.insert(QLatin1String("color"), color.name(QColor::HexRgb));
+    if (gradient) {
+        QJsonArray colors;
+        for (const QColor &c : gradient->stops) {
+            colors.append(c.name(QColor::HexRgb));
+        }
+        QJsonObject g;
+        g.insert(QLatin1String("colors"), colors);
+        g.insert(QLatin1String("motion"), gradient->motion == Gradient::Motion::Scroll ? QStringLiteral("scroll") : QStringLiteral("static"));
+        g.insert(QLatin1String("cycleSeconds"), gradient->cycleSeconds);
+        o.insert(QLatin1String("gradient"), g);
+    } else {
+        o.insert(QLatin1String("effect"), Effects::nameFor(effect));
+        o.insert(QLatin1String("color"), color.name(QColor::HexRgb));
+    }
     o.insert(QLatin1String("brightness"), brightnessPercent);
     o.insert(QLatin1String("speed"), speed);
     return QJsonDocument(o).toJson(QJsonDocument::Indented);

@@ -1,9 +1,15 @@
 {
     "name": "Endwalker",
     "group": "Final Fantasy XIV",
-    "description": "Endwalker gold.",
-    "effect": "Solid Color",
-    "color": "#e0b84a",
-    "brightness": 80,
-    "speed": 128
+    "description": "Endwalker gold through starlight into Etheirys blue.",
+    "gradient": {
+        "colors": [
+            "#e0b84a",
+            "#ffffff",
+            "#4aa3e0"
+        ],
+        "motion": "static",
+        "cycleSeconds": 16
+    },
+    "brightness": 80
 }

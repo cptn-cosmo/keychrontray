@@ -63,3 +63,32 @@ void MockKeyboardBackend::rescan()
         Q_EMIT connectedChanged(true);
     }
 }
+
+QList<double> MockKeyboardBackend::ledPositions() const
+{
+    QList<double> pos;
+    for (int i = 0; i < perKeyLedCount(); ++i) {
+        pos.append(double(i % 21) / 20.0);
+    }
+    return pos;
+}
+
+std::optional<QList<HueSat>> MockKeyboardBackend::readPerKey()
+{
+    if (!m_connected || !m_perKeySupported) {
+        return std::nullopt;
+    }
+    return m_perKey;
+}
+
+bool MockKeyboardBackend::writePerKey(int start, const QList<HueSat> &colors)
+{
+    if (!m_connected || !m_perKeySupported || m_failWrites || colors.size() > MaxPerKeyChunk || start < 0 || start + colors.size() > m_perKey.size()) {
+        return false;
+    }
+    for (int i = 0; i < colors.size(); ++i) {
+        m_perKey[start + i] = colors[i];
+    }
+    ++m_perKeyWrites;
+    return true;
+}

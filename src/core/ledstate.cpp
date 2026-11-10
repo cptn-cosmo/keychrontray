@@ -25,6 +25,8 @@ constexpr Effects::Entry kTable[] = {
     {20, "Reactive Multinexus"},
     {21, "Splash"},
     {22, "Solid Splash"},
+    {23, "Per Key RGB"}, // Keychron custom effects (firmware with KEYCHRON_RGB)
+    {24, "Mixed RGB"},
 };
 
 QString normalize(const QString &s)

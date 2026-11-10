@@ -1,9 +1,15 @@
 {
     "name": "Elden Ring",
     "group": "Games",
-    "description": "Erdtree gold.",
-    "effect": "Breathing",
-    "color": "#c9a227",
-    "brightness": 80,
-    "speed": 40
+    "description": "Erdtree gold into grace amber.",
+    "gradient": {
+        "colors": [
+            "#ffe08a",
+            "#ffb02e",
+            "#d4691e"
+        ],
+        "motion": "scroll",
+        "cycleSeconds": 30
+    },
+    "brightness": 80
 }
