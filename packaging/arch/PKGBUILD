@@ -9,7 +9,7 @@ url="https://github.com/cptn-cosmo/keychrontray"
 license=('GPL-3.0-or-later')
 depends=('qt6-base' 'kstatusnotifieritem' 'knotifications' 'kconfig' 'hidapi' 'systemd-libs'
          'libstdc++' 'glibc')
-makedepends=('git' 'cmake' 'ninja' 'extra-cmake-modules')
+makedepends=('git' 'cmake' 'kcoreaddons' 'ninja' 'extra-cmake-modules')
 optdepends=('upower: keyboard battery level over Bluetooth'
             'bluez: Bluetooth connection detection')
 provides=("$_pkgname")
